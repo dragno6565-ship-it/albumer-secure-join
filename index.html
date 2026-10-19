@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Join an Album on Albumer Secure</title>
+<style>
+ *{box-sizing:border-box;margin:0} body{font-family:'Segoe UI',system-ui,sans-serif;background:radial-gradient(ellipse at 50% -10%,#3a0d17 0%,#0a0507 60%) #0a0507;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+ .card{background:#160b0f;border:1px solid #2a1419;color:#f1eef0;border-radius:24px;max-width:420px;width:100%;padding:32px 26px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.15)}
+ img.logo{width:120px} h1{font-size:22px;margin:14px 0 6px} p{color:#a99ea2;font-size:14px;line-height:1.5}
+ .code{font-size:34px;font-weight:800;letter-spacing:8px;background:#0a0507;border-radius:12px;padding:14px 6px;margin:18px 0;color:#ff4458}
+ a.btn{display:block;background:radial-gradient(ellipse at 50% -10%,#3a0d17 0%,#0a0507 60%) #0a0507;color:#fff;text-decoration:none;font-weight:600;border-radius:12px;padding:14px;margin:8px 0}
+ a.store{display:inline-block;margin:6px 4px;color:#ff4458;font-weight:600;text-decoration:none;border:1px solid #2a1419;border-radius:10px;padding:10px 14px;font-size:14px}
+ .steps{text-align:left;font-size:13px;color:#a99ea2;margin-top:14px} .steps li{margin:5px 0}
+ .copied{font-size:12px;color:#3dd68c;min-height:16px;margin-top:4px}
+ .fallback{font-size:12px;color:#888;margin-top:10px}
+ .inlinecode{font-family:monospace;font-size:14px;letter-spacing:1px;color:#f1eef0}
+</style></head><body>
+<div class="card">
+  <img class="logo" src="/mark.png" onerror="this.style.display='none'" alt="Albumer Secure">
+  <h1 id="hdr">You're invited to a private album</h1>
+  <a class="btn" id="openApp" href="#">Open in Albumer Secure</a>
+  <div class="copied" id="copied"></div>
+
+  <p style="margin-top:10px">Don't have Albumer Secure yet? It's free, for adults 18+.</p>
+  <a class="store" id="playStore" href="https://play.google.com/store/apps/details?id=com.app.photo.albumersecure">Get it on Google Play</a>
+  <a class="store" id="appStoreLink" href="https://apps.apple.com/app/id6824556663">Download on the App Store</a>
+  <ol class="steps">
+    <li>Download Albumer Secure from the store above.</li>
+    <li>Create your account and choose your PIN.</li>
+    <li>Open Albumer Secure. The album is waiting for you.</li>
+  </ol>
+  <p class="fallback">If it isn't there, tap the key icon on the Albums tab and enter <b class="inlinecode" id="code">······</b>.</p>
+</div>
+<script>
+ var m = location.pathname.match(/([A-Za-z0-9]{4,8})/);
+ var code = m ? m[1].toUpperCase() : '';
+ document.getElementById('code').textContent = code || 'ASK YOUR HOST';
+ var isAndroid = /android/i.test(navigator.userAgent);
+ var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+             (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+ if (isAndroid) { document.getElementById('appStoreLink').style.display = 'none'; }
+ else if (isIOS) { document.getElementById('playStore').style.display = 'none'; }
+ // Secret-album invites carry the one-time key secret in the URL fragment.
+ // A fragment is never sent to the server, so it only exists in this browser —
+ // we hand it straight to the app and never transmit it anywhere.
+ var km = (location.hash || '').match(/k=([A-Za-z0-9_-]+)/);
+ var keySecret = km ? km[1] : '';
+ // Carry the code through the Play Store so a fresh install can auto-join.
+ var play = 'https://play.google.com/store/apps/details?id=com.app.photo.albumersecure&referrer=' +
+            encodeURIComponent('albumer_code=' + code + (keySecret ? '&albumer_k=' + keySecret : ''));
+ if (code) document.getElementById('playStore').setAttribute('href', play);
+ var q = keySecret ? '?k=' + keySecret : '';
+ var scheme = 'albumersecure://join/' + code + q;
+ var intent = 'intent://join/' + code + q + '#Intent;scheme=albumersecure;package=com.app.photo.albumersecure;S.browser_fallback_url=' +
+              encodeURIComponent(play) + ';end';
+
+ function copyCode(){
+   if (!code) return;
+   // Private albums: the one-time key travels WITH the code, or the person
+   // joins an album they cannot decrypt (the copied-code bug, fixed 12 Aug).
+   var token = keySecret ? code + ':' + keySecret : code;
+   try { navigator.clipboard.writeText(token); } catch(e){}
+   try {
+     var ta = document.createElement('textarea'); ta.value = token;
+     document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+   } catch(e){}
+   document.getElementById('copied').textContent = 'Code copied. Albumer Secure will pick it up automatically.';
+ }
+
+ var appStore = 'https://apps.apple.com/app/id6824556663';
+ var btn = document.getElementById('openApp');
+ btn.setAttribute('href', isAndroid ? intent : scheme);
+ btn.addEventListener('click', function(ev){
+   copyCode();
+   ev.preventDefault();
+   // Try the app; if nothing takes over, fall through to the store so nobody
+   // dead-ends. On iOS an uninstalled scheme pops Safari's "address is
+   // invalid" alert — the timer then carries the person to the App Store,
+   // and the copied code lets the app auto-join after install.
+   var t0 = Date.now();
+   window.location.href = scheme;
+   setTimeout(function(){
+     if (document.hidden || Date.now() - t0 > 2500) return;
+     window.location.href = isAndroid ? intent : appStore;
+   }, 1600);
+ });
+ document.getElementById('playStore').addEventListener('click', copyCode);
+ document.getElementById('appStoreLink').addEventListener('click', copyCode);
+
+</script>
+</body></html>
